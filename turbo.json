@@ -1,6 +1,5 @@
 {
   "$schema": "https://turborepo.org/schema.json",
-  "globalDotEnv": [".env"],
   "globalEnv": [
     "NODE_ENV",
     "ANALYZE",
@@ -20,7 +19,7 @@
     "AUTH_DOMAIN",
     "APP_ID"
   ],
-  "pipeline": {
+  "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": [

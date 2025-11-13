@@ -9,11 +9,12 @@ import {
   ThresholdReporter,
   XcodeReporter,
   XmlReporter,
-} from '@jscpd/finder';
-import {IOptions} from '@jscpd/core';
+} from '@jscpd-ai/finder';
+import {IOptions} from '@jscpd-ai/core';
 import {grey, yellow} from 'colors/safe';
-import HtmlReporter from "@jscpd/html-reporter";
-import SarifReporter from "jscpd-sarif-reporter";
+import HtmlReporter from "@jscpd-ai/html-reporter";
+import SarifReporter from "@jscpd-ai/sarif-reporter";
+import AIReporter from "@jscpd-ai/ai-reporter";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reporters: Record<string, any> = {
@@ -28,6 +29,7 @@ const reporters: Record<string, any> = {
   threshold: ThresholdReporter,
   xcode: XcodeReporter,
   sarif: SarifReporter,
+  ai: AIReporter,  // AIReporter implements both IReporter and ISubscriber
 }
 
 export function registerReporters(options: IOptions, detector: InFilesDetector): void {
@@ -35,7 +37,13 @@ export function registerReporters(options: IOptions, detector: InFilesDetector):
   // @ts-ignore
   options.reporters.forEach((reporter: string) => {
     if (reporter in reporters) {
-      detector.registerReporter(new reporters[reporter](options));
+      const reporterInstance = new reporters[reporter](options);
+      detector.registerReporter(reporterInstance);
+
+      // AIReporter also implements ISubscriber, so register it as both
+      if (reporter === 'ai' && 'subscribe' in reporterInstance) {
+        detector.registerSubscriber(reporterInstance);
+      }
     } else {
       try {
         const reporterClass = require(`@jscpd/${reporter}-reporter`).default;
@@ -45,7 +53,7 @@ export function registerReporters(options: IOptions, detector: InFilesDetector):
           const reporterClass = require(`jscpd-${reporter}-reporter`).default;
           detector.registerReporter(new reporterClass(options));
         } catch (e) {
-          console.log(yellow(`warning: ${reporter} not installed (install packages named @jscpd/${reporter}-reporter or jscpd-${reporter}-reporter)`))
+          console.log(yellow(`warning: ${reporter} not installed (install packages named @jscpd-ai/${reporter}-reporter or jscpd-${reporter}-reporter)`))
           console.log(grey((e as any).message));
         }
       }
