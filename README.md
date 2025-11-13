@@ -3,25 +3,42 @@
   <img src="https://raw.githubusercontent.com/kucherenko/jscpd/master/assets/logo.svg?sanitize=true">
 </p>
 
-## jscpd
+## js-cp-d_ai
+
+> AI-enhanced copy/paste detector for programming source code, supports 150+ formats including enhanced Flutter/Dart support.
+
+### About This Fork
+
+This is an AI-enhanced fork of [jscpd](https://github.com/kucherenko/jscpd) by Andrey Kucherenko.
+
+**Original Repository:** [kucherenko/jscpd](https://github.com/kucherenko/jscpd)
+
+### Why This Fork?
+
+We created **js-cp-d_ai** to modernize jscpd with:
+
+- **Flutter.art Integration**: Enhanced support for Flutter and Dart codebases, making it ideal for Flutter.art projects
+- **AI-Ready Architecture**: Integration with onama for AI-powered reasoning and intelligent code analysis
+- **Modern Tooling**: Updated dependencies and improved compatibility with modern development workflows
+- **Enhanced Detection**: Improved duplicate detection capabilities specifically optimized for Dart/Flutter patterns
+
+### Key Changes from Original jscpd
+
+- Enhanced Dart/Flutter language support and pattern recognition
+- AI reasoning capabilities via onama integration
+- Optimized for Flutter.art development workflows
+- Modernized dependency management
+- Improved performance for large Flutter codebases
+
+### Original jscpd Badges
 
 ![stand with Ukraine](https://badgen.net/badge/support/UKRAINE/?color=0057B8&labelColor=FFD700)
 
 [![npm](https://img.shields.io/npm/v/jscpd.svg?style=flat-square)](https://www.npmjs.com/package/jscpd)
 ![jscpd](https://raw.githubusercontent.com/kucherenko/jscpd/master/assets/jscpd-badge.svg?sanitize=true)
 [![license](https://img.shields.io/github/license/kucherenko/jscpd.svg?style=flat-square)](https://github.com/kucherenko/jscpd/blob/master/LICENSE)
-[![npm](https://img.shields.io/npm/dw/jscpd.svg?style=flat-square)](https://www.npmjs.com/package/jscpd)
 
-
-[![jscpd CI](https://github.com/kucherenko/jscpd/actions/workflows/nodejs.yml/badge.svg)](https://github.com/kucherenko/jscpd/actions/workflows/nodejs.yml)
-[![codecov](https://codecov.io/gh/kucherenko/jscpd/branch/master/graph/badge.svg)](https://codecov.io/gh/kucherenko/jscpd)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fkucherenko%2Fjscpd.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fkucherenko%2Fjscpd?ref=badge_shield)
-[![Backers on Open Collective](https://opencollective.com/jscpd/backers/badge.svg)](#backers)
-[![Sponsors on Open Collective](https://opencollective.com/jscpd/sponsors/badge.svg)](#sponsors)
-
-[![NPM](https://nodei.co/npm/jscpd.svg)](https://nodei.co/npm/jscpd/)
-
-> Copy/paste detector for programming source code, supports 150+ formats.
+---
 
 Copy/paste is a common technical debt on a lot of projects. The jscpd gives the ability to find duplicated blocks implemented on more than 150 programming languages and digital formats of documents.
 The jscpd tool implements [Rabin-Karp](https://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm) algorithm for searching duplications.
@@ -123,14 +140,16 @@ In case of deep customisation of detection process you can build your own tool w
 
 ## Start contribution
 
- - Fork the repo [kucherenko/jscpd](https://github.com/kucherenko/jscpd/)
- - Clone forked version (`git clone https://github.com/{your-id}/jscpd`)
+ - Fork the repo [moinsen-dev/jscpd2025](https://github.com/moinsen-dev/jscpd2025)
+ - Clone forked version (`git clone https://github.com/{your-id}/jscpd2025`)
  - Install dependencies (`pnpm install`)
  - Run the project in dev mode: `pnpm dev` (watch changes and rebuild the packages)
  - Add your changes
  - Add tests and check it with `pnpm test`
  - Build your project `pnpm build`
  - Create PR
+
+For contributions to the original jscpd project, please visit [kucherenko/jscpd](https://github.com/kucherenko/jscpd/).
 
 ## Who uses jscpd
  - [GitHub Super Linter](https://github.com/github/super-linter) is combination of multiple linters to install as a GitHub Action
