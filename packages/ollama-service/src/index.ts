@@ -20,7 +20,7 @@ export interface OllamaConfig {
 export const defaultOllamaConfig: OllamaConfig = {
   host: 'http://localhost:11434',
   model: 'codellama:7b',
-  timeout: 30000,
+  timeout: 120000, // 2 minutes for large code blocks
   enabled: true,
   features: {
     semanticSimilarity: true,
@@ -125,6 +125,10 @@ export class OllamaService {
       }
     }
 
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+
     try {
       const response = await fetch(`${this.config.host}/api/generate`, {
         method: 'POST',
@@ -139,9 +143,10 @@ export class OllamaService {
             ...options,
           },
         }),
-        // @ts-ignore
-        timeout: this.config.timeout,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Ollama request failed: ${response.statusText}`);
@@ -150,7 +155,16 @@ export class OllamaService {
       const data = (await response.json()) as OllamaResponse;
       return data.response;
     } catch (error) {
+      clearTimeout(timeoutId);
+
       if (error instanceof Error) {
+        // Check if this is an abort error (timeout)
+        if (error.name === 'AbortError') {
+          throw new Error(
+            `Ollama request timed out after ${this.config.timeout / 1000}s. ` +
+            `Try: 1) Use a faster model (gemma3:1b), 2) Reduce code size, or 3) Increase timeout with --ai-timeout option`
+          );
+        }
         throw new Error(`Ollama generation failed: ${error.message}`);
       }
       throw error;

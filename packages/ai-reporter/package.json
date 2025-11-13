@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@jscpd-ai/core": "workspace:*",
+    "@jscpd-ai/finder": "workspace:*",
     "@jscpd-ai/ollama-service": "workspace:*",
     "fs-extra": "^11.2.0"
   },

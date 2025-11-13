@@ -29,7 +29,7 @@ const reporters: Record<string, any> = {
   threshold: ThresholdReporter,
   xcode: XcodeReporter,
   sarif: SarifReporter,
-  ai: AIReporter,
+  ai: AIReporter,  // AIReporter implements both IReporter and ISubscriber
 }
 
 export function registerReporters(options: IOptions, detector: InFilesDetector): void {
@@ -37,7 +37,13 @@ export function registerReporters(options: IOptions, detector: InFilesDetector):
   // @ts-ignore
   options.reporters.forEach((reporter: string) => {
     if (reporter in reporters) {
-      detector.registerReporter(new reporters[reporter](options));
+      const reporterInstance = new reporters[reporter](options);
+      detector.registerReporter(reporterInstance);
+
+      // AIReporter also implements ISubscriber, so register it as both
+      if (reporter === 'ai' && 'subscribe' in reporterInstance) {
+        detector.registerSubscriber(reporterInstance);
+      }
     } else {
       try {
         const reporterClass = require(`@jscpd/${reporter}-reporter`).default;

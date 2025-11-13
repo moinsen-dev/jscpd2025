@@ -1,5 +1,5 @@
 import type {IClone, IOptions, IStatistic, ITokenLocation} from '@jscpd-ai/core';
-import type {IReporter} from "@jscpd/finder";
+import type {IReporter} from "@jscpd-ai/finder";
 import {join} from 'path';
 import {ensureDirSync, readJsonSync, writeFileSync} from "fs-extra";
 import {green} from "colors/safe";

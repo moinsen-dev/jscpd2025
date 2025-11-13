@@ -3,10 +3,10 @@
  * Generates AI-enhanced reports with semantic analysis and refactoring suggestions
  */
 
-import { IClone, IOptions, IReporter, IStatistic } from '@jscpd-ai/core';
+import { IClone, ISubscriber, IStatistic, IEventPayload } from '@jscpd-ai/core';
+import { IReporter } from '@jscpd-ai/finder';
 import { OllamaService, SemanticAnalysis, RefactoringSuggestion } from '@jscpd-ai/ollama-service';
-import { writeFile } from 'fs-extra';
-import { join } from 'path';
+import { writeFileSync, ensureDirSync } from 'fs-extra';
 
 export interface AIReportOptions {
   output?: string;
@@ -44,32 +44,62 @@ export interface AIReport {
   ollamaModel?: string;
 }
 
-export class AIReporter implements IReporter {
+export class AIReporter implements ISubscriber, IReporter {
   private ollamaService: OllamaService | null = null;
   private options: AIReportOptions;
   private clones: AIEnhancedClone[] = [];
+  private aiProcessingPromises: Promise<void>[] = [];
+  private initializationPromise: Promise<void>;
+  private processedCount: number = 0;
+  private failedCount: number = 0;
+  private statistic: IStatistic | null = null;
+  private completionPromise: Promise<void> = Promise.resolve();
 
-  constructor(options: AIReportOptions = {}) {
+  constructor(options: any = {}) {
+    // Extract AI-specific options from reportersOptions.ai if available
+    const aiOptions = options.reportersOptions?.ai || {};
+
     this.options = {
       format: 'json',
-      includeRefactoringSuggestions: true,
-      includeSemanticAnalysis: true,
-      includeExplanations: false,
-      minSimilarityForAI: 40,
-      ...options,
+      includeRefactoringSuggestions: aiOptions.includeRefactoringSuggestions !== false,
+      includeSemanticAnalysis: aiOptions.includeSemanticAnalysis !== false,
+      includeExplanations: aiOptions.includeExplanations || false,
+      minSimilarityForAI: aiOptions.minSimilarityForAI || 40,
+      output: aiOptions.output || options.output,
+      ...aiOptions,
     };
 
-    // Try to initialize Ollama service
-    this.initializeOllama();
+    // Start Ollama initialization and store the promise
+    this.initializationPromise = this.initializeOllama(aiOptions);
   }
 
-  private async initializeOllama(): Promise<void> {
+  private async initializeOllama(aiOptions: any): Promise<void> {
     try {
-      this.ollamaService = new OllamaService();
+      console.log('[AI Reporter] Starting Ollama initialization...');
+      const ollamaConfig: any = {};
+
+      if (aiOptions.aiHost) {
+        ollamaConfig.host = aiOptions.aiHost;
+      }
+
+      if (aiOptions.aiModel) {
+        ollamaConfig.model = aiOptions.aiModel;
+      }
+
+      if (aiOptions.aiTimeout) {
+        ollamaConfig.timeout = aiOptions.aiTimeout;
+      }
+
+      console.log('[AI Reporter] Creating OllamaService with config:', ollamaConfig);
+      this.ollamaService = new OllamaService(ollamaConfig);
+      console.log('[AI Reporter] Checking Ollama availability...');
       const isAvailable = await this.ollamaService.checkAvailability();
+      console.log('[AI Reporter] Availability check result:', isAvailable);
       if (!isAvailable) {
         console.warn('Ollama is not available. AI features will be disabled.');
         this.ollamaService = null;
+      } else {
+        console.log(`AI Reporter initialized with model: ${this.ollamaService.getConfig().model}`);
       }
     } catch (error) {
       console.warn('Failed to initialize Ollama:', error);
@@ -77,43 +107,81 @@ export class AIReporter implements IReporter {
     }
   }
 
-  getName(): string {
-    return 'ai';
+  subscribe() {
+    console.log('[AI Reporter] Subscribe called');
+    return {
+      'CLONE_FOUND': (payload: IEventPayload) => {
+        console.log('[AI Reporter] CLONE_FOUND event received');
+        if (payload.clone) {
+          // Collect clones synchronously and start AI processing in background
+          this.collectClone(payload.clone);
+        }
+      },
+    };
   }
 
-  async attach(eventEmitter: any): Promise<void> {
-    eventEmitter.on('CLONE_FOUND', this.onCloneFound.bind(this));
-    eventEmitter.on('END', this.onEnd.bind(this));
-  }
-
-  private async onCloneFound(clone: IClone): Promise<void> {
+  private collectClone(clone: IClone): void {
+    // Synchronously add clone to our collection
     const enhancedClone: AIEnhancedClone = { ...clone, aiProcessed: false };
+    this.clones.push(enhancedClone);
+    console.log('[AI Reporter] Clone collected, total:', this.clones.length);
+
+    // Start AI processing and track the promise
+    const promise = this.processCloneWithAI(clone, enhancedClone).catch(err => {
+      console.error('[AI Reporter] AI processing error:', err);
+    });
+    this.aiProcessingPromises.push(promise);
+  }
+
+  private async processCloneWithAI(clone: IClone, enhancedClone: AIEnhancedClone): Promise<void> {
+    // Wait for initialization first - this is safe now that report() waits with deasync
+    await this.initializationPromise;
 
     // Check if we should use AI for this clone
-    if (this.shouldUseAI(clone)) {
-      try {
-        if (this.options.includeSemanticAnalysis && this.ollamaService) {
-          enhancedClone.semanticAnalysis = await this.analyzeSemantics(clone);
-        }
-
-        if (this.options.includeRefactoringSuggestions && this.ollamaService) {
-          enhancedClone.refactoringSuggestion = await this.generateRefactoring(clone);
-        }
-
-        if (this.options.includeExplanations && this.ollamaService) {
-          enhancedClone.explanation = await this.explainDuplication(clone);
-        }
-
-        enhancedClone.aiProcessed = true;
-      } catch (error) {
-        console.error('AI processing failed for clone:', error);
-      }
+    if (!this.shouldUseAI(clone)) {
+      console.log('[AI Reporter] Skipping AI (Ollama not available)');
+      return;
     }
 
-    this.clones.push(enhancedClone);
+    try {
+      let aiCallsMade = false;
+
+      if (this.options.includeSemanticAnalysis && this.ollamaService) {
+        console.log('[AI Reporter] Calling Ollama for semantic analysis...');
+        const start = Date.now();
+        enhancedClone.semanticAnalysis = await this.analyzeSemantics(clone);
+        console.log(`[AI Reporter] Semantic analysis completed in ${Date.now() - start}ms`);
+        aiCallsMade = true;
+      }
+
+      if (this.options.includeRefactoringSuggestions && this.ollamaService) {
+        console.log('[AI Reporter] Calling Ollama for refactoring suggestions...');
+        const start = Date.now();
+        enhancedClone.refactoringSuggestion = await this.generateRefactoring(clone);
+        console.log(`[AI Reporter] Refactoring suggestion completed in ${Date.now() - start}ms`);
+        aiCallsMade = true;
+      }
+
+      if (this.options.includeExplanations && this.ollamaService) {
+        console.log('[AI Reporter] Calling Ollama for explanation...');
+        const start = Date.now();
+        enhancedClone.explanation = await this.explainDuplication(clone);
+        console.log(`[AI Reporter] Explanation completed in ${Date.now() - start}ms`);
+        aiCallsMade = true;
+      }
+
+      if (aiCallsMade) {
+        enhancedClone.aiProcessed = true;
+        console.log('[AI Reporter] Clone AI-enhanced with real AI calls');
+      } else {
+        console.log('[AI Reporter] No AI calls made (all options false or service unavailable)');
+      }
+    } catch (error) {
+      console.error('[AI Reporter] AI processing failed for clone:', error);
+    }
   }
 
-  private shouldUseAI(clone: IClone): boolean {
+  private shouldUseAI(_clone: IClone): boolean {
     // Only use AI for borderline cases where traditional detection might need extra confidence
     // or for generating refactoring suggestions
     if (!this.ollamaService) {
@@ -121,6 +189,7 @@ export class AIReporter implements IReporter {
     }
 
     // Always use AI if enabled and Ollama is available
+    // Future: could add logic to filter based on clone characteristics
     return true;
   }
 
@@ -130,8 +199,8 @@ export class AIReporter implements IReporter {
     }
 
     try {
-      const code1 = clone.duplicationA.sourceCode || '';
-      const code2 = clone.duplicationB.sourceCode || '';
+      const code1 = clone.duplicationA.fragment || '';
+      const code2 = clone.duplicationB.fragment || '';
       const language = clone.format || 'unknown';
 
       return await this.ollamaService.analyzeSementicSimilarity(code1, code2, language);
@@ -149,12 +218,12 @@ export class AIReporter implements IReporter {
     try {
       const duplicates = [
         {
-          code: clone.duplicationA.sourceCode || '',
+          code: clone.duplicationA.fragment || '',
           file: clone.duplicationA.sourceId || 'unknown',
           line: clone.duplicationA.start?.line || 0,
         },
         {
-          code: clone.duplicationB.sourceCode || '',
+          code: clone.duplicationB.fragment || '',
           file: clone.duplicationB.sourceId || 'unknown',
           line: clone.duplicationB.start?.line || 0,
         },
@@ -174,7 +243,7 @@ export class AIReporter implements IReporter {
     }
 
     try {
-      const code = clone.duplicationA.sourceCode || '';
+      const code = clone.duplicationA.fragment || '';
       const locations = [
         `${clone.duplicationA.sourceId}:${clone.duplicationA.start?.line}`,
         `${clone.duplicationB?.sourceId}:${clone.duplicationB?.start?.line}`,
@@ -188,16 +257,146 @@ export class AIReporter implements IReporter {
     }
   }
 
-  private async onEnd(statistic: IStatistic): Promise<void> {
-    const report = this.generateReport(statistic);
+  // IReporter interface implementation - generates initial report, AI processing continues async
+  public report(clones: IClone[], statistic: IStatistic): void {
+    console.log('[AI Reporter] report() called with', clones.length, 'clones');
+    this.statistic = statistic;
 
-    // Save report
-    if (this.options.output) {
-      await this.saveReport(report);
+    // Generate and save initial report immediately (without blocking)
+    this.generateAndSaveInitialReport(statistic);
+
+    // Start async AI processing in background
+    if (this.aiProcessingPromises.length > 0) {
+      console.log(`[AI Reporter] Starting background AI processing for ${this.aiProcessingPromises.length} clones...`);
+      console.log('[AI Reporter] Initial report generated. AI results will be added progressively.');
+
+      // Wait for initialization, then process all AI tasks - store the promise for waitForCompletion()
+      this.completionPromise = this.initializationPromise
+        .then(() => {
+          console.log('[AI Reporter] Ollama initialized, processing clones with AI...');
+          return this.processAllAITasks();
+        })
+        .catch(err => {
+          console.error('[AI Reporter] Ollama initialization failed:', err);
+          this.finalize();
+        });
+    } else {
+      console.log('[AI Reporter] No AI processing needed, report complete.');
+      this.completionPromise = Promise.resolve();
+    }
+  }
+
+  // IReporter optional completion method - allows detector to wait for async processing
+  public async waitForCompletion(): Promise<void> {
+    console.log('[AI Reporter] waitForCompletion() called');
+    return this.completionPromise;
+  }
+
+  private generateAndSaveInitialReport(statistic: IStatistic): void {
+    try {
+      console.log('[AI Reporter] Generating initial report with', this.clones.length, 'clones');
+      const report = this.generateReport(statistic);
+
+      // Save initial report
+      if (this.options.output) {
+        this.saveReportSync(report);
+      }
+
+      // Print initial summary
+      this.printSummary(report);
+    } catch (error) {
+      console.error('[AI Reporter] Error generating initial report:', error);
+      throw error;
+    }
+  }
+
+  private async processAllAITasks(): Promise<void> {
+    const startTime = Date.now();
+    let successCount = 0;
+    let failCount = 0;
+
+    // Process all AI tasks and track results
+    const results = await Promise.allSettled(this.aiProcessingPromises);
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        successCount++;
+        this.processedCount++;
+
+        // Update report progressively (every few clones or when all done)
+        if (index === results.length - 1 || (index + 1) % 5 === 0) {
+          this.updateReportWithAIResults();
+        }
+      } else {
+        failCount++;
+        this.failedCount++;
+        console.warn(`[AI Reporter] Clone #${index + 1} AI processing failed:`, result.reason);
+      }
+    });
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[AI Reporter] AI processing completed: ${successCount} successful, ${failCount} failed in ${totalTime}ms`);
+
+    // Final update and generate prompt
+    this.finalize();
+  }
+
+  private updateReportWithAIResults(): void {
+    if (!this.statistic || !this.options.output) return;
+
+    try {
+      // Re-generate report with updated AI data
+      const report = this.generateReport(this.statistic);
+      this.saveReportSync(report);
+      console.log(`[AI Reporter] Report updated: ${this.processedCount}/${this.clones.length} clones AI-analyzed`);
+    } catch (error) {
+      console.error('[AI Reporter] Failed to update report:', error);
+    }
+  }
+
+  private finalize(): void {
+    if (!this.statistic) return;
+
+    console.log('[AI Reporter] Finalizing report...');
+
+    // Check failure rate
+    const failureRate = this.failedCount / this.clones.length;
+    if (failureRate > 0.5) {
+      console.warn('[AI Reporter] High failure rate (>50%), skipping AI-enhanced features');
+      return;
     }
 
-    // Print summary
-    this.printSummary(report);
+    // Generate final report
+    const report = this.generateReport(this.statistic);
+    if (this.options.output) {
+      this.saveReportSync(report);
+    }
+
+    // Generate AI prompt markdown if we have AI results
+    if (this.processedCount > 0 && this.options.output) {
+      this.generateAIPrompt(report);
+    }
+
+    console.log('[AI Reporter] Report finalized with', this.processedCount, 'AI-analyzed clones');
+  }
+
+  private generateAIPrompt(report: AIReport): void {
+    try {
+      const { PromptGenerator } = require('./prompt-generator');
+      const outputDir = this.options.output ? require('path').dirname(this.options.output) : '.';
+      const promptPath = require('path').join(outputDir, 'refactoring-guide.md');
+
+      const generator = new PromptGenerator({
+        outputPath: promptPath,
+        projectName: 'Project',
+        language: report.clones[0]?.format || 'code',
+      });
+
+      generator.writePrompt(report);
+      console.log('[AI Reporter] AI refactoring guide generated:', promptPath);
+    } catch (error) {
+      console.error('[AI Reporter] Failed to generate AI prompt:', error);
+    }
   }
 
   private generateReport(statistic: IStatistic): AIReport {
@@ -212,7 +411,7 @@ export class AIReporter implements IReporter {
         totalClones: this.clones.length,
         totalFiles: statistic.formats ? Object.keys(statistic.formats).length : 0,
         totalLines: statistic.total?.lines || 0,
-        duplicatePercentage: statistic.percentage || 0,
+        duplicatePercentage: statistic.total?.percentage || 0,
         aiAnalyzedClones,
       },
       clones: this.clones,
@@ -252,9 +451,9 @@ export class AIReporter implements IReporter {
   private generateRecommendations(statistic: IStatistic, refactoringSummary: any): string[] {
     const recommendations: string[] = [];
 
-    if (statistic.percentage && statistic.percentage > 10) {
+    if (statistic.total?.percentage && statistic.total.percentage > 10) {
       recommendations.push(
-        `High duplication detected (${statistic.percentage.toFixed(1)}%). Consider refactoring.`
+        `High duplication detected (${statistic.total.percentage.toFixed(1)}%). Consider refactoring.`
       );
     }
 
@@ -279,20 +478,27 @@ export class AIReporter implements IReporter {
     return recommendations;
   }
 
-  private async saveReport(report: AIReport): Promise<void> {
-    const outputPath = this.options.output || 'jscpd-ai-report.json';
+  private saveReportSync(report: AIReport): void {
+    let outputPath = this.options.output || '.';
+
+    // If output is a directory, append the filename
+    if (!outputPath.endsWith('.json') && !outputPath.endsWith('.md')) {
+      ensureDirSync(outputPath);
+      outputPath = `${outputPath}/jscpd-ai-report.json`;
+    }
 
     try {
       if (this.options.format === 'json') {
-        await writeFile(outputPath, JSON.stringify(report, null, 2));
+        writeFileSync(outputPath, JSON.stringify(report, null, 2));
+        console.log(`\nAI report saved to: ${outputPath}`);
       } else if (this.options.format === 'markdown') {
         const markdown = this.generateMarkdownReport(report);
-        await writeFile(outputPath.replace('.json', '.md'), markdown);
+        const mdPath = outputPath.replace('.json', '.md');
+        writeFileSync(mdPath, markdown);
+        console.log(`\nAI report saved to: ${mdPath}`);
       }
-
-      console.log(`\nAI report saved to: ${outputPath}`);
     } catch (error) {
-      console.error('Failed to save report:', error);
+      console.error('[AI Reporter] Failed to save report:', error);
     }
   }
 
@@ -324,9 +530,12 @@ export class AIReporter implements IReporter {
 
     markdown += `\n## Detailed Clones\n\n`;
     report.clones.forEach((clone, index) => {
+      const linesCount = clone.duplicationA?.end?.line && clone.duplicationA?.start?.line
+        ? clone.duplicationA.end.line - clone.duplicationA.start.line + 1
+        : 0;
       markdown += `### Clone ${index + 1}\n\n`;
       markdown += `- Format: ${clone.format}\n`;
-      markdown += `- Lines: ${clone.linesCount}\n`;
+      markdown += `- Lines: ${linesCount}\n`;
 
       if (clone.semanticAnalysis) {
         markdown += `\n**AI Analysis:**\n`;

@@ -102,11 +102,25 @@ export class InFilesDetector {
         }
         return clones;
       })
-      .then((clones: IClone[]) => {
+      .then(async (clones: IClone[]) => {
         const statistic = this.statistic.getStatistic();
+
+        // Call report() on all reporters
         this.reporters.forEach((reporter: IReporter) => {
           reporter.report(clones, statistic);
         });
+
+        // Wait for any reporters that have async work to complete
+        const completionPromises = this.reporters
+          .map(reporter => reporter.waitForCompletion?.())
+          .filter((promise): promise is Promise<void> => promise !== undefined);
+
+        if (completionPromises.length > 0) {
+          console.log(`[Detector] Waiting for ${completionPromises.length} reporter(s) to complete async work...`);
+          await Promise.all(completionPromises);
+          console.log('[Detector] All reporters completed');
+        }
+
         return clones;
       });
   }

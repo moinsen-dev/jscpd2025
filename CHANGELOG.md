@@ -2,6 +2,141 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://github.com/moinsen-dev/jscpd2025) (2025-11-13)
+
+### ⚠ BREAKING CHANGES
+
+* **rebrand:** Project renamed from `jscpd` to `jscpd-ai` with new package scope `@jscpd-ai/*`
+* **node:** Minimum Node.js version is now 18+
+* **dependencies:** Major dependency updates including Turbo 2.x, TypeScript 5.x, vitest 4.x
+
+### 🎯 Major Features
+
+#### AI-Powered Analysis (NEW)
+* **ollama integration:** Local AI-powered semantic analysis via Ollama
+  * Semantic similarity detection for functionally identical code
+  * AI-generated refactoring suggestions with confidence scores
+  * Natural language explanations of duplications
+  * 100% local processing - no external API calls
+  * Support for multiple models (codellama, deepseek-coder, etc.)
+* **ai-reporter:** New AI-enhanced reporter with detailed analysis
+  * JSON, Markdown, and HTML output formats
+  * Confidence scores and reasoning for each suggestion
+  * Priority-based refactoring recommendations (high/medium/low)
+
+#### Enhanced Dart/Flutter Support (NEW)
+* **dart patterns:** Advanced Dart 3.0+ language support
+  * Null safety operators detection (`??`, `?.`, `!`)
+  * Modern Dart features (records, sealed classes, pattern matching)
+  * Extension methods and mixin pattern detection
+  * Late initialization pattern recognition
+* **flutter widgets:** Flutter-specific pattern analysis
+  * 20+ common widget patterns (Container, Column, Row, Scaffold, etc.)
+  * Widget tree structure extraction
+  * StatefulWidget and StatelessWidget detection
+  * Build method duplication analysis
+  * Deeply nested widget tree comparison
+
+### 📦 New Packages
+
+* **@jscpd-ai/ollama-service:** Ollama integration service
+* **@jscpd-ai/ai-reporter:** AI-enhanced reporting
+
+### 🔧 Package Renaming
+
+All packages migrated to `@jscpd-ai/*` scope:
+* `jscpd` → `jscpd-ai`
+* `@jscpd/core` → `@jscpd-ai/core`
+* `@jscpd/tokenizer` → `@jscpd-ai/tokenizer`
+* `@jscpd/finder` → `@jscpd-ai/finder`
+* `@jscpd/html-reporter` → `@jscpd-ai/html-reporter`
+* `@jscpd/badge-reporter` → `@jscpd-ai/badge-reporter`
+* `@jscpd/sarif-reporter` → `@jscpd-ai/sarif-reporter`
+* `@jscpd/leveldb-store` → `@jscpd-ai/leveldb-store`
+* `@jscpd/redis-store` → `@jscpd-ai/redis-store`
+
+### 🚀 CLI Enhancements
+
+New AI-specific options:
+* `--ai` - Enable AI features
+* `--ai-model <model>` - Specify Ollama model (default: codellama:7b)
+* `--ai-host <url>` - Ollama host URL
+* `--ai-semantic` - Enable semantic similarity analysis
+* `--ai-refactor` - Generate refactoring suggestions
+* `--ai-explain` - Generate natural language explanations
+* `--ai-report <path>` - Output path for AI report
+
+### 📚 Documentation
+
+* **AI_FEATURES.md:** Comprehensive guide to AI features
+* **OLLAMA_SETUP.md:** Ollama installation and configuration guide
+* **IMPLEMENTATION_PLAN.md:** Technical implementation roadmap
+* **README.md:** Complete rewrite highlighting AI capabilities
+* **CLAUDE.md:** Enhanced developer guide with AI architecture
+
+### 🔄 Infrastructure Updates
+
+* **turbo:** Upgraded to Turbo 2.6.1 for faster builds
+* **typescript:** Updated to TypeScript 5.5.4
+* **vitest:** Migrated to vitest 4.0.8 for testing
+* **pnpm:** Package manager upgraded to 10.20.0
+* **build:** All packages use tsup for optimized builds
+
+### 🐛 Bug Fixes
+
+* **pnpm-workspace:** Fixed corrupted workspace configuration
+* **types:** Added missing @types/node dependencies
+* **imports:** Resolved circular dependency issues
+* **reporter interface:** Updated reporters to use ISubscriber pattern
+* **clone interface:** Fixed property access for duplication fragments
+
+### 🔒 Backwards Compatibility
+
+* All original jscpd features remain fully functional
+* Traditional detection works without Ollama installed
+* AI features gracefully degrade when unavailable
+* Existing configurations compatible (with optional AI config)
+
+### 📊 Performance
+
+* Build times optimized with Turbo 2.x caching
+* Dart detection: ~40ms for typical Flutter projects
+* AI analysis: Depends on Ollama model (typically 1-5s per clone)
+
+### Migration Guide
+
+For users migrating from jscpd to jscpd-ai:
+
+```bash
+# Uninstall old version
+npm uninstall -g jscpd
+
+# Install jscpd-ai
+npm install -g jscpd-ai
+
+# Traditional usage (no changes needed)
+jscpd-ai /path/to/code
+
+# Enable AI features (requires Ollama)
+jscpd-ai /path/to/code --ai --ai-refactor
+```
+
+Configuration files can be renamed:
+* `.jscpd.json` → `.jscpd-ai.json` (optional, old name still works)
+
+API imports need updating:
+```typescript
+// Old
+import { jscpd } from 'jscpd';
+
+// New
+import { jscpd } from 'jscpd-ai';
+```
+
+---
+
+## Previous Releases (Original jscpd)
+
 ### [3.2.1](https://github.com/kucherenko/jscpd/compare/v3.2.0...v3.2.1) (2020-04-18)
 
 

@@ -55,6 +55,7 @@ export function initCli(packageJson: any, argv: string[]): Command {
 		.option('--ai', 'enable AI-powered analysis using Ollama (requires Ollama to be installed)')
 		.option('--ai-model [string]', 'Ollama model to use (Default is codellama:7b)')
 		.option('--ai-host [string]', 'Ollama host URL (Default is http://localhost:11434)')
+		.option('--ai-timeout [number]', 'Timeout for AI requests in seconds (Default is 120)')
 		.option('--ai-semantic', 'enable semantic similarity analysis for duplicates')
 		.option('--ai-refactor', 'generate refactoring suggestions for duplicates')
 		.option('--ai-explain', 'generate explanations for why duplicates exist')

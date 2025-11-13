@@ -33,6 +33,21 @@ const convertCliToOptions = (cli: Command): Partial<IOptions> => {
     exitCode: cli.exitCode,
   };
 
+  // Map AI-related CLI options to reportersOptions.ai
+  if (cli.ai || cli.aiModel || cli.aiHost || cli.aiTimeout || cli.aiSemantic || cli.aiRefactor || cli.aiExplain || cli.aiReport) {
+    result.reportersOptions = result.reportersOptions || {};
+    result.reportersOptions.ai = {
+      enabled: cli.ai || false,
+      aiModel: cli.aiModel,
+      aiHost: cli.aiHost,
+      aiTimeout: cli.aiTimeout ? parseInt(cli.aiTimeout) * 1000 : undefined, // Convert seconds to milliseconds
+      includeSemanticAnalysis: cli.aiSemantic || false,
+      includeRefactoringSuggestions: cli.aiRefactor || false,
+      includeExplanations: cli.aiExplain || false,
+      output: cli.aiReport || cli.output,
+    };
+  }
+
   if (cli.threshold !== undefined) {
     result.threshold = Number(cli.threshold);
   }

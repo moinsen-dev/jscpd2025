@@ -122,7 +122,9 @@ export function extractWidgetStructure(code: string): string[] {
   let match;
 
   while ((match = widgetPattern.exec(code)) !== null) {
-    structure.push(match[1]);
+    if (match[1]) {
+      structure.push(match[1]);
+    }
   }
 
   return structure;
