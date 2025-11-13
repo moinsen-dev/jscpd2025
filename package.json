@@ -4,6 +4,7 @@
   "npmClient": "yarn",
   "useWorkspaces": true,
   "version": "1.0.0",
+  "packageManager": "pnpm@10.20.0",
   "scripts": {
     "build": "turbo run build",
     "commit": "cz",
@@ -17,10 +18,10 @@
     "publish-packages": "changeset version && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.7",
-    "commitizen": "^4.3.0",
+    "@changesets/cli": "^2.29.7",
+    "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
-    "turbo": "^1.13.3"
+    "turbo": "^2.6.1"
   },
   "config": {
     "commitizen": {
@@ -29,6 +30,6 @@
   },
   "readmeFilename": "README.md",
   "dependencies": {
-    "@vitest/coverage-v8": "^2.0.5"
+    "@vitest/coverage-v8": "^4.0.8"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "extends": "@jscpd-ai/tsconfig/base.json",
+  "extends": "@jscpd-ai/tsconfig/pkg.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"

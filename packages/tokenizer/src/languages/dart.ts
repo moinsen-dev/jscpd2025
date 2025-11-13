@@ -237,7 +237,7 @@ export function analyzeDartTokens(tokens: IToken[]): {
   let complexity = 0;
 
   tokens.forEach(token => {
-    const value = token.value;
+    const value = token.value || '';
 
     if (value.match(/(\?\?|\?\.|!)/)) {
       hasNullSafety = true;
